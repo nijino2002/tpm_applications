@@ -1,0 +1,3 @@
+NOTICE:
+1. In "main.c", the header file "tspiproglib.h" is in the upper level folder "TspiProgLib". Thus, "TspiProgLib" needs to be added to the including path of gcc command. If you compile "main.c" with an IDE, "TspiProgLib" should be added to the including path via compiling confinguration dialog.
+
