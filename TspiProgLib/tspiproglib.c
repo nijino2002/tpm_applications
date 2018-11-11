@@ -167,3 +167,55 @@ void	hex_print(char* data, int length)
     }
     printf("\n");
 }
+
+int MyFunc_PrintAllPCRs(TSS_HCONTEXT *context, TSS_HTPM *tpm) {
+    TSS_RESULT res = TSS_SUCCESS;
+    UINT32 uPCRLen;
+    BYTE*  rgbPCRValue = NULL;
+    int i,j;
+
+    if(context == NULL || tpm == NULL) {
+        printf("MyFunc_PrintAllPCRs: incorrect parameters.\n");
+        return -1;
+    }
+
+    for(i=0; i<24; i++){
+        res = Tspi_TPM_PcrRead(*tpm, i, &uPCRLen, &rgbPCRValue);
+        if(res != TSS_SUCCESS){
+            printf("MyFunc_PrintAllPCRs: Read PCR %d error.\n", i);
+            return -1;
+        }
+        printf("PCR %02d: ", i);
+        for (j=0; j<19; j++) {
+            printf("%02x ", *(rgbPCRValue+j));
+        }
+        printf("\n");
+    }
+
+    Tspi_Context_FreeMemory(*context, rgbPCRValue);
+    return 0;
+}
+
+int     MyFunc_ExtendPCR(TSS_HCONTEXT *context, TSS_HTPM *tpm, UINT32 pcr_index,
+                         UINT32 in_size, BYTE* in,
+                         UINT32 *out_size, BYTE** out){
+    TSS_RESULT res = TSS_SUCCESS;
+
+    if(context == NULL || tpm == NULL || in_size != 20 || in == NULL) {
+        printf("MyFunc_ExtendPCR: incorrect parameters.\n");
+        return -1;
+    }
+
+    if(pcr_index < 0 || pcr_index > 23) {
+        printf("MyFunc_ExtendPCR: invalid PCR index.\n");
+        return -1;
+    }
+
+    res = Tspi_TPM_PcrExtend(*tpm, pcr_index, in_size, in, NULL, out_size, out);
+    if(res != TSS_SUCCESS) {
+        printf("MyFunc_ExtendPCR: Tspi_TPM_PcrExtend failed.\n");
+        return -1;
+    }
+
+    return 0;
+}

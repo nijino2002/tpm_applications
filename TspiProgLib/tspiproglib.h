@@ -10,5 +10,12 @@ int		MyFunc_DataBinding(TSS_HCONTEXT *context, UINT32 in_size, BYTE *in,
 int     MyFunc_DataUnbinding(TSS_HCONTEXT *context, TSS_HKEY *tpm_key,
                              UINT32 in_size, BYTE* in,
                              UINT32 *unbind_data_size, BYTE** unbind_data);
+int     MyFunc_DataSeal();
+int     MyFunc_DataUnseal();
+int     MyFunc_ReadPCR();
+int     MyFunc_PrintAllPCRs(TSS_HCONTEXT *context, TSS_HTPM *tpm);
+int     MyFunc_ExtendPCR(TSS_HCONTEXT *context, TSS_HTPM *tpm, UINT32 pcr_index,
+                            UINT32 in_size, BYTE* in,
+                            UINT32 *out_size, BYTE** out);
 
 #endif

@@ -11,5 +11,6 @@
 #include <tss/tss_typedef.h>
 #include <tss/tss_structs.h>
 #include <tss/tspi.h>
+#include <trousers/trousers.h>
 
 #endif //TSPIPROGLIB_TPM_GENERAL_INC_H
