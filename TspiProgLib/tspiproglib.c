@@ -219,3 +219,8 @@ int     MyFunc_ExtendPCR(TSS_HCONTEXT *context, TSS_HTPM *tpm, UINT32 pcr_index,
 
     return 0;
 }
+
+int     MyFunc_ReadPCR(TSS_HCONTEXT *context, TSS_HTPM *tpm, UINT32 pcr_index, 
+						UINT32 *out_size, BYTE **out) {
+	return 0;
+}
