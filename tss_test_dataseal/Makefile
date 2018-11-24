@@ -5,6 +5,7 @@ LIB_DIR = ../TspiProgLib/
 INCLUDE_DIR = ../TspiProgLib/
 LIB = -ltspiprog -ltspi
 
+.PHONY : main main.o
 main : main.o
 	$(CC) -o main main.o -L$(LIB_DIR) $(LIB)
 
