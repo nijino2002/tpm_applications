@@ -14,6 +14,8 @@ int main() {
     UINT32 uPCRLen = 0;
     BYTE* rgbPCRValue;
     UINT32 extValLen = 0;
+    UINT32 j = 0;
+    
     //must be 20 bytes!!
     BYTE* extVal = "abcdefghijklmnopqrst";
 
@@ -40,6 +42,15 @@ int main() {
     Tspi_Context_FreeMemory(hContext, rgbPCRValue);
 
     MyFunc_PrintAllPCRs(&hContext, &hTPM);
+    
+    //Print specific PCR value
+    MyFunc_ReadPCR(&hContext, &hTPM, 1, &uPCRLen, &rgbPCRValue);
+    printf("PCR %02d: VAL_LEN: %d, VALUE: ", 1, uPCRLen);
+    for (j = 0; j < 20; j++) {
+    	printf("0x%02x ", *(rgbPCRValue + j));
+    }
+    printf("\n");
+    Tspi_Context_FreeMemory(hContext, rgbPCRValue);
 
     Tspi_Context_FreeMemory(hContext, NULL);
     Tspi_Context_Close(hContext);

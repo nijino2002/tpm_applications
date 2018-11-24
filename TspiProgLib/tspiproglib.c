@@ -222,5 +222,25 @@ int     MyFunc_ExtendPCR(TSS_HCONTEXT *context, TSS_HTPM *tpm, UINT32 pcr_index,
 
 int     MyFunc_ReadPCR(TSS_HCONTEXT *context, TSS_HTPM *tpm, UINT32 pcr_index, 
 						UINT32 *out_size, BYTE **out) {
+	TSS_RESULT res = TSS_SUCCESS;
+    UINT32 uPCRLen;
+    BYTE*  rgbPCRValue = NULL;
+    
+	if(context == NULL || tpm == NULL || out_size == NULL) {
+		printf("MyFunc_ReadPCR: incorrect parameters.\n");
+		return -1;
+	}
+	
+	if(pcr_index < 0 || pcr_index > 23) {
+        printf("MyFunc_ReadPCR: invalid PCR index.\n");
+        return -1;
+    }
+    
+    res = Tspi_TPM_PcrRead(*tpm, pcr_index, &uPCRLen, &rgbPCRValue);
+    
+    *out_size = uPCRLen;
+    memcpy(*out, rgbPCRValue, uPCRLen);
+    
+    Tspi_Context_FreeMemory(*context, rgbPCRValue);
 	return 0;
 }
