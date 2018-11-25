@@ -81,14 +81,15 @@ int main(){
 		return -1;
 	}
 	
+	// Print all PCRs
+	printf("After Data Sealing.\n\n");
+	MyFunc_PrintAllPCRs(&hContext, &hTPM);
+	
 	//Now hEncData contains an encrypted blob, let's extract it.
 	Tspi_GetAttribData(hEncData, TSS_TSPATTRIB_ENCDATA_BLOB,
 				TSS_TSPATTRIB_ENCDATABLOB_BLOB,
 				&out_size, &out);
 				
-	// Print all PCRs
-	printf("After Data Sealing.\n\n");
-	MyFunc_PrintAllPCRs(&hContext, &hTPM);
 	
 	// Print out buffer
 	printf("\"out\" Buffer.\n");
