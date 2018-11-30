@@ -4,7 +4,7 @@ AR = ar
 
 libtspiprog.a : tspiproglib.o
 	$(AR) -crv libtspiprog.a tspiproglib.o
-	
+
 tspiproglib.o : tspiproglib.h tpm_general_inc.h
 	$(CC) -c tspiproglib.c
 	

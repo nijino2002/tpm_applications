@@ -3,6 +3,30 @@
 #include <string.h>
 #include "tspiproglib.h"
 
+int 	MyFunc_Init(TSS_HCONTEXT *context, TSS_HTPM *tpm, BYTE *secret) {
+	TSS_RESULT 		res = TSS_SUCCESS;
+	TSS_HPOLICY 	hPolicy;
+	TSS_HKEY 		hSRK = 0;
+	TSS_UUID		SRK_UUID = TSS_UUID_SRK;
+	
+	if(context == NULL || tpm == NULL || secret == NULL) {
+		printf("MyFunc_Init: incorrect parameters.\n");
+		return -1;
+	}
+	
+	Tspi_Context_Create(context);
+	Tspi_Context_Connect(*context, NULL);
+	Tspi_Context_GetTpmObject(*context, tpm);
+	
+	Tspi_Context_LoadKeyByUUID(*context, TSS_PS_TYPE_SYSTEM, SRK_UUID, &hSRK);
+	
+	Tspi_GetPolicyObject( hSRK, TSS_POLICY_USAGE, &hPolicy );
+    Tspi_Policy_SetSecret( hPolicy, TSS_SECRET_MODE_PLAIN,
+                           strlen((char*)secret), (BYTE*)secret);
+                           
+	return 0;
+}
+
 int		MyFunc_CreateTPMKey(TSS_HCONTEXT *context, TSS_HKEY *srk, TSS_HKEY *tpm_key){
     TSS_FLAG nFlags = 0;
     TSS_RESULT res = TSS_SUCCESS;
@@ -32,6 +56,41 @@ int		MyFunc_CreateTPMKey(TSS_HCONTEXT *context, TSS_HKEY *srk, TSS_HKEY *tpm_key
     res = Tspi_Key_CreateKey(*tpm_key, *srk, 0);
     if(res != TSS_SUCCESS){
         printf("MyFunc_CreateTPMKey: create tpm key failed.\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+int		MyFunc_CreateTPMKey2(TSS_HCONTEXT *context, TSS_HKEY *srk, TSS_HKEY *tpm_key, TSS_FLAG key_flags) {
+	TSS_FLAG nFlags = key_flags;
+    TSS_RESULT res = TSS_SUCCESS;
+
+    if(context == NULL || srk == NULL || tpm_key == NULL) {
+        printf("MyFunc_CreateTPMKey: none of the parameters can be null.\n");
+        return -1;
+    }
+
+    nFlags = TSS_KEY_TYPE_BIND | TSS_KEY_SIZE_512 |
+             TSS_KEY_NO_AUTHORIZATION | TSS_KEY_NOT_MIGRATABLE;
+
+    res = Tspi_Context_CreateObject(*context, TSS_OBJECT_TYPE_RSAKEY, nFlags, tpm_key);
+    if(res != TSS_SUCCESS) {
+        printf("MyFunc_CreateTPMKey2: create tpm_key failed.\n");
+        return -1;
+    }
+
+    res = Tspi_SetAttribUint32(*tpm_key, TSS_TSPATTRIB_KEY_INFO,
+                               TSS_TSPATTRIB_KEYINFO_ENCSCHEME,
+                               TSS_ES_RSAESPKCSV15);
+    if(res != TSS_SUCCESS) {
+        printf("MyFunc_CreateTPMKey2: set attribute failed.\n");
+        return -1;
+    }
+
+    res = Tspi_Key_CreateKey(*tpm_key, *srk, 0);
+    if(res != TSS_SUCCESS){
+        printf("MyFunc_CreateTPMKey2: create tpm key failed.\n");
         return -1;
     }
 
@@ -244,3 +303,124 @@ int     MyFunc_ReadPCR(TSS_HCONTEXT *context, TSS_HTPM *tpm, UINT32 pcr_index,
     Tspi_Context_FreeMemory(*context, rgbPCRValue);
 	return 0;
 }
+
+int	MyFunc_CreatePCRs(TSS_HCONTEXT *context, 
+		TSS_HTPM *tpm,
+		UINT32 num_PCRs, 	// the number of specified PCRs
+		UINT32 *PCRs, //indices of specified PCRs
+		TSS_HPCRS *hPCRs) {
+	UINT32 numPCRs, subCap, i;
+	UINT32 ulPCRValueLength;
+	BYTE *rgbPCRValue, *rgbNumPCRs;
+	
+	Tspi_Context_CreateObject(*context, TSS_OBJECT_TYPE_PCRS, 0, hPCRs);
+	
+	//Retrieve number of PCRs from the TPM
+	subCap = TSS_TPMCAP_PROP_PCR;
+	Tspi_TPM_GetCapability(*tpm, TSS_TPMCAP_PROPERTY,
+			sizeof(UINT32), (BYTE*)&subCap,
+			&ulPCRValueLength, &rgbNumPCRs);
+			
+	numPCRs = *(UINT32*)rgbNumPCRs;
+	Tspi_Context_FreeMemory(*context, rgbNumPCRs);
+	
+	for(i = 0; i < num_PCRs; i++) {
+		if(PCRs[i] >= numPCRs) {
+			printf("MyFunc_CreatePCRs: PCR %d's value %u is too big.\n", i, PCRs[i]);
+			Tspi_Context_CloseObject(*context, *hPCRs);
+			return -1;
+		}
+		
+		Tspi_TPM_PcrRead(*tpm, PCRs[i], &ulPCRValueLength, &rgbPCRValue);
+		
+		Tspi_PcrComposite_SetPcrValue(*hPCRs, PCRs[i], ulPCRValueLength, rgbPCRValue);
+		
+		Tspi_Context_FreeMemory(*context, rgbPCRValue);
+	}
+	
+	return 0;
+}
+
+int     MyFunc_DataSeal(TSS_HCONTEXT *context, TSS_HTPM *tpm, TSS_HKEY *key, 
+						UINT32 in_size, BYTE *in,
+                        UINT32 *out_size, BYTE **out,
+                        TSS_HPCRS *pcrs) {
+	TSS_RESULT res = TSS_SUCCESS;
+	TSS_HENCDATA	hEncData;
+	TSS_UUID SRK_UUID = TSS_UUID_SRK;
+    TSS_HKEY hSRK;
+    UINT32	keySize = 0;
+    UINT32	tmp_out_size = 0;
+    BYTE	*tmp_out = NULL;
+	
+	if(context == NULL || tpm == NULL || key == NULL) {
+		printf("MyFunc_DataSeal: Incorrect parameters.\n");
+		return -1;
+	}
+	
+	if(in_size == 0 || in == NULL) {
+		printf("MyFunc_DataSeal: in_size must bigger than 0 and in must be non-null.\n");
+		return -1;
+	}
+	
+	if(*out != NULL) {
+		printf("MyFunc_DataSeal: out must be NULL, which will be allocated automatically.\n");
+		return -1;
+	}
+	
+	//Load SRK
+	Tspi_Context_LoadKeyByUUID(*context, TSS_PS_TYPE_SYSTEM, SRK_UUID, &hSRK);
+	
+	//Create the encrypted data object in the TSP
+	Tspi_Context_CreateObject(*context, TSS_OBJECT_TYPE_ENCDATA,
+				TSS_ENCDATA_SEAL, &hEncData);
+	
+	//Get key size
+	Tspi_GetAttribUint32(*key, TSS_TSPATTRIB_KEY_INFO,
+				TSS_TSPATTRIB_KEYINFO_SIZE,
+				&keySize);
+				
+	//Firstly, check key size
+	/* Make sure the data is small enough to be bound by this key, 
+	   taking into account the OAEP padding size (38) and the size 
+	   of the TPM_SEALED_DATA structure (65). */
+	if(in_size > keySize - 103) {
+		printf("MyFunc_DataSeal: Data to be encrypted is too big.\n");
+		return -1;
+	}
+	
+	//key MUST be loaded in TPM
+    Tspi_Key_LoadKey(*key, hSRK);
+    
+    //Seal data
+    res = Tspi_Data_Seal(hEncData, *key, in_size, in, *pcrs);
+	if(res != TSS_SUCCESS) {
+		printf("MyFunc_DataSeal: Data sealing failed.\n");
+		return -1;
+	}
+	
+	//Now hEncData contains an encrypted blob, let's extract it.
+	Tspi_GetAttribData(hEncData, TSS_TSPATTRIB_ENCDATA_BLOB,
+				TSS_TSPATTRIB_ENCDATABLOB_BLOB,
+				&tmp_out_size, &tmp_out);
+    
+    //Allocate memory for "out"
+    *out = (BYTE*) malloc (sizeof(BYTE) * tmp_out_size + 1);
+    if(*out == NULL) {
+    	printf("MyFunc_DataSeal: allocating memory for out buffer failed.\n");
+		return -1;
+    }
+    memset(*out, '\0', sizeof(BYTE) * tmp_out_size + 1);
+    memcpy(*out, tmp_out, tmp_out_size);
+    *out_size = tmp_out_size;
+    
+    Tspi_Context_FreeMemory(*context, tmp_out);
+	Tspi_Context_CloseObject(*context, hEncData);
+    
+    return 0;
+}
+
+
+
+
+
