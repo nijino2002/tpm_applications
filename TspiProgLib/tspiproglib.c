@@ -227,6 +227,15 @@ void	hex_print(char* data, int length)
     printf("\n");
 }
 
+void	char_print(char* data, int length) {
+	int ptr = 0;
+    for(;ptr < length;ptr++)
+    {
+        printf("%c",(unsigned char)*(data+ptr));
+    }
+    printf("\n");
+}
+
 int MyFunc_PrintAllPCRs(TSS_HCONTEXT *context, TSS_HTPM *tpm) {
     TSS_RESULT res = TSS_SUCCESS;
     UINT32 uPCRLen;
@@ -416,6 +425,62 @@ int     MyFunc_DataSeal(TSS_HCONTEXT *context, TSS_HTPM *tpm, TSS_HKEY *key,
     
     Tspi_Context_FreeMemory(*context, tmp_out);
 	Tspi_Context_CloseObject(*context, hEncData);
+    
+    return 0;
+}
+
+int     MyFunc_DataUnseal(TSS_HCONTEXT *context, TSS_HKEY *tpm_key, 
+						UINT32 in_size, BYTE *in,
+						UINT32 *unsealed_data_size, BYTE **unsealed_data) {
+	TSS_RESULT res = TSS_SUCCESS;
+    TSS_HENCDATA hEncData;
+    TSS_UUID SRK_UUID = TSS_UUID_SRK;
+    TSS_HKEY hSRK;
+    
+    if(context == NULL || tpm_key == NULL ||
+        in == NULL || in_size <= 0 || unsealed_data_size <= 0){
+        printf("MyFunc_DataUnseal: incorrect parameters.\n");
+        return -1;
+    }
+    
+    if(*unsealed_data != NULL) {
+    	printf("MyFunc_DataUnseal: unsealed_data must be NULL, which will be allocated automatically.\n");
+        return -1;
+    }
+
+    res = Tspi_Context_CreateObject(*context,TSS_OBJECT_TYPE_ENCDATA,
+                              TSS_ENCDATA_SEAL, &hEncData);
+    if(res != TSS_SUCCESS){
+        printf("MyFunc_DataUnseal: create object hEncData failed.\n");
+        return -1;
+    }
+
+    res = Tspi_SetAttribData(hEncData,TSS_TSPATTRIB_ENCDATA_BLOB,
+                       TSS_TSPATTRIB_ENCDATABLOB_BLOB,in_size,in);
+    if(res != TSS_SUCCESS){
+        printf("MyFunc_DataUnseal: set attribute failed.\n");
+        return -1;
+    }
+
+    //IMPORTANT!
+    //tpm_key must be reloaded in to TPM,
+    //otherwise the Tspi_Data_Unbind would return error 0x310E (TSS_E_KEY_NOT_LOADED)
+    Tspi_Context_LoadKeyByUUID(*context, TSS_PS_TYPE_SYSTEM, SRK_UUID, &hSRK);
+    Tspi_Key_LoadKey(*tpm_key, hSRK);
+    
+    res = Tspi_Data_Unseal(hEncData, *tpm_key, unsealed_data_size, unsealed_data);
+    if(res != TSS_SUCCESS){
+        printf("MyFunc_DataUnseal: data unsealing failed. Error No.: 0x%010x\n", ERROR_CODE(res));
+
+        printf("ERROR_LAYER: %x\n", ERROR_LAYER(res));
+        printf("TSP ERROR: %x\n", TSP_ERROR(res));
+        if(ERROR_CODE(res) == TSS_E_INTERNAL_ERROR)
+            printf("TSS_E_INTERNAL_ERROR\n");
+
+        return -1;
+    }
+    
+    Tspi_Context_CloseObject(*context, hEncData);
     
     return 0;
 }

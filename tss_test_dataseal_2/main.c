@@ -20,6 +20,8 @@ int main(){
 	BYTE		*in = "helloworld";
 	UINT32		out_size;
 	BYTE		*out = NULL;
+	UINT32		unsealed_data_size = 0;
+	BYTE		*unsealed_data_buf = NULL;
 	
 	in_size = strlen(in);
 	
@@ -60,9 +62,23 @@ int main(){
 	// Print out buffer
 	printf("\"out\" Buffer.\n");
 	hex_print((char*)out, out_size);
-	free(out);
 	
-LABEL_FINISH:			
+	//Unseal the sealed data
+	if(MyFunc_DataUnseal(&hContext, &hKey, 
+				out_size, out, 
+				&unsealed_data_size, &unsealed_data_buf) != 0) {
+		printf("MyFunc_DataUnseal failed.\n");
+		goto LABEL_FINISH;
+	}
+	
+	printf("\nThe unsealed_data:\n");
+	char_print(unsealed_data_buf, unsealed_data_size);
+	
+	Tspi_Context_FreeMemory(hContext, unsealed_data_buf);
+	
+LABEL_FINISH:
+	if(out != NULL) free(out);
+	Tspi_Context_FreeMemory(hContext, NULL);
 	Tspi_Context_Close(hContext);
 	
 	return 0;
