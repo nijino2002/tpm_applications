@@ -4,6 +4,8 @@
 #include <stdlib.h>
 
 extern "C" {
+	#include "tpm_tspi.h"
+	#include "tpm_utils.h"
 	#include "tspiproglib.h"
 }
 
@@ -16,11 +18,14 @@ int main(int argc, char *argv[]) {
 	TSS_HKEY	hAIKey;
 	TSS_UUID	SRK_UUID = TSS_UUID_SRK;
 	BYTE		*secret = (BYTE*)"111111";
-	TSS_HPOLICY		hPolicy;
+	TSS_HPOLICY		hPolicy, hTPMPolicy;
 	TSS_HPOLICY		hAIKPolicy;
 	BYTE *AIKPub = NULL;
 	UINT32 AIKPubLen = 0;
 	UINT32 EK_CERT_NV_INDEX = TPM_NV_INDEX_EKCert;
+	TSS_HKEY	hEK;
+	BYTE bSecret[32] = {0};
+	UINT32 uiSecret = 0;
 	
 	Tspi_Context_Create(&hContext);
 	Tspi_Context_Connect(hContext, NULL);
@@ -31,6 +36,37 @@ int main(int argc, char *argv[]) {
 	Tspi_GetPolicyObject( hSRK, TSS_POLICY_USAGE, &hPolicy );
     Tspi_Policy_SetSecret( hPolicy, TSS_SECRET_MODE_PLAIN,
                            strlen((char*)secret), (BYTE*)secret);
+                           
+        //Get public endorsement key
+        res = Tspi_TPM_GetPubEndorsementKey(hTPM, FALSE, NULL, &hEK);
+        if (res != TSS_SUCCESS) {
+        	std::cout << "Tspi_TPM_GetPubEndorsementKey failed." << std::endl;
+        	std::cout << Trspi_Error_String(res) << std::endl;
+        	if(ERROR_CODE(res) == TPM_E_DISABLED_CMD) {
+        		std::cout << "Enter owner password: ";
+        		std::cin >> bSecret;
+        		uiSecret = strlen((char*)bSecret);
+        		if(uiSecret <= 0) {
+        			std::cout << "Owner password cannot be NULL." << std::endl;
+        			goto END;
+        		}
+        		
+        		if(!bSecret) {
+        			std::cout << "Incorrect owner password." << std::endl;
+        			goto END;
+        		}
+        		Tspi_GetPolicyObject( hTPM, TSS_POLICY_USAGE, &hTPMPolicy );
+        		Tspi_Policy_SetSecret( hTPMPolicy, TSS_SECRET_MODE_PLAIN,
+                           uiSecret, bSecret);
+        		res = Tspi_TPM_GetPubEndorsementKey(hTPM, TRUE, NULL, &hEK);
+        		if(res != TSS_SUCCESS){
+        			std::cout << "Failed to get public endorsement key." << std::endl;
+        			std::cout << Trspi_Error_String(res) << std::endl;
+        			goto END;
+        		}
+        		displayKey(hEK);
+        	}
+        }//if
 	
 	//Create TPM key
 	initFlags = TSS_KEY_TYPE_IDENTITY | TSS_KEY_SIZE_2048 | TSS_KEY_VOLATILE | 
@@ -79,6 +115,7 @@ int main(int argc, char *argv[]) {
 	
 	std::cout << "Create AIK successfully." << std::endl;
 	
+END:
 	Tspi_Context_FreeMemory(hContext, NULL);
 	Tspi_Context_Close(hContext);
 	
