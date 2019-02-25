@@ -6,9 +6,24 @@
 extern "C" {
 	#include "tpm_tspi.h"
 	#include "tpm_utils.h"
-	#include "tspiproglib.h"
+	//#include "tspiproglib.h"
 	#include <openssl/rsa.h>
 	#include <tcg/include/common.h>
+}
+
+void GetPubEK(TSS_HTPM *hTPM);
+
+TSS_RESULT CreateAIK(TSS_HCONTEXT *hContext, TSS_HTPM *hTPM, TSS_HKEY *hSRK) {
+	TSS_RESULT res = TSS_SUCCESS;
+	TSS_HKEY hWrappingKey, hSigningKey;
+
+	res = Testsuite_Transport_Init(*hContext, *hSRK, *hTPM, TRUE, FALSE, &hWrappingKey, &hSigningKey);
+	if(res != TSS_SUCCESS){
+		print_error("Testsuite_Transport_Init failed.", res);
+		return res;
+	}
+
+	return res;
 }
 
 void GetPubEK(TSS_HTPM *hTPM){
