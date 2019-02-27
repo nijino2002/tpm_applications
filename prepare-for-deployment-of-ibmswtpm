@@ -1,0 +1,18 @@
+install make libssl-dev automake autopoint
+
+add -Wno-error=format to AM_CFLAGS in libtpm/lib/Makefile
+
+add following to /etc/profile
+export LD_LIBRARY_PATH=/home/linaro/dev/trousers/src/tspi/.libs:$LD_LIBRARY_PATH
+export TESTSUITE_OWNER_SECRET="111111"
+export TESTSUITE_SRK_SECRET="111111"
+export TCSD_TCP_DEVICE_PORT=6666
+export TCSD_TCP_DEVICE_HOSTNAME=localhost
+export TPM_PATH=/home/linaro/tpmdir
+export TPM_PORT=6666
+export TPM_SERVER_PORT=6666
+export TPM_SERVER_NAME=localhost
+
+when you compile tsstestsuite, each Makefile must be added -lcrypto to LIBS as well as the Makefiles in each sub-directories. Makefile in highlevel directory must be added -lcrypto -lpthread to LIBS. The name of testsuite directory must be name as "testsuite". Before running tsstests.sh, make sure running command "source /etc/profile" in terminal to guarantee the $LD_LIBRARY_PATH available.
+
+EK and SRK must be configured via tpm_createek and tpm_takeownership of tpm-tools, otherwise, error TSS_E_PS_KEY_NOTFOUND will rises.

@@ -20,11 +20,15 @@ int main() {
     Tspi_Context_Create(&hContext);
     Tspi_Context_Connect(hContext, NULL);
     Tspi_Context_GetTpmObject(hContext, &hTPM);
-
-    res = Tspi_Context_LoadKeyByUUID(hContext, TSS_PS_TYPE_SYSTEM,
+	
+    TSS_FLAG srk_flags =  TSS_KEY_TSP_SRK|TSS_KEY_AUTHORIZATION;
+	res = Tspi_Context_CreateObject(hContext, TSS_OBJECT_TYPE_RSAKEY, srk_flags, &hSRK); 
+	res = Tspi_Context_LoadKeyByUUID(hContext, TSS_PS_TYPE_SYSTEM,
                                      SRK_UUID, &hSRK);
-    if(res != TSS_SUCCESS) {
+	if(res != TSS_SUCCESS) {
         printf("Error occured in Tspi_Context_LoadKeyByUUID.\n");
+		printf(Trspi_Error_String(ERROR_CODE(res)));
+		printf("\n");
         exit(1);
     }
 
