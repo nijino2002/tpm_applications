@@ -12,10 +12,10 @@ LIB = -ltspi -ltpm -lcrypto -ltestsuite_common
 
 .PHONY : tpf_agent tpf_agent.o
 tpf_agent : tpf_agent.o
-	$(CXX) -o tpf_agent tpf_agent.o -L$(LIB_DIR2) -L$(LIB_DIR3) $(LIB)
+	$(CXX) -o tpf_agent tpf_agent.o -L$(LIB_DIR2) -L$(LIB_DIR3) $(LIB) -fpermissive
 
 tpf_agent.o : 
-	$(CXX) -c tpf_agent.cpp -I$(INCLUDE_DIR2) -I$(INCLUDE_DIR3) -L$(LIB_DIR1) -L$(LIB_DIR2) -L$(LIB_DIR3) $(LIB)
+	$(CXX) -c tpf_agent.cpp -I$(INCLUDE_DIR2) -I$(INCLUDE_DIR3) -L$(LIB_DIR1) -L$(LIB_DIR2) -L$(LIB_DIR3) $(LIB) -fpermissive
 	
 .PHONY : clean
 clean : 
