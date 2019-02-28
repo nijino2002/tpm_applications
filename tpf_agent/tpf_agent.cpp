@@ -237,7 +237,7 @@ void GetPubEK(TSS_HTPM *hTPM){
 	return;
 }
 
-TSS_RESULT SaveKey(){
+TSS_RESULT SaveKeyToFile(){
 	TSS_RESULT res = TSS_SUCCESS;
 
 	return res;
