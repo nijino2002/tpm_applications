@@ -311,25 +311,11 @@ int main(int argc, char *argv[]) {
 	rgbPubAIKey = NULL;
 
 	//Register AIK to persistent storage
-	//res = RegisterKey(&hContext, &hSRK, &hAIKey,AIK_UUID); 
-
-	//Create Identity Key Object
-	res = Tspi_Context_CreateObject(hContext,
-					   TSS_OBJECT_TYPE_RSAKEY,
-					   AIKInitFlags, &loadedAIK);
+	res = RegisterKey(&hContext, &hSRK, &hAIKey,AIK_UUID); 
 	if(res != TSS_SUCCESS) {
-		print_error("CreateObject loadedAIK failed.", res);
+		print_error("RegisterKey failed.", res);
+		goto END;
 	}
-
-	res = Tspi_Context_LoadKeyByUUID(hContext, TSS_PS_TYPE_USER, AIK_UUID, &loadedAIK);
-	if(res != TSS_SUCCESS){
-		print_error("LoadKeyByUUID: failed.",res);
-	}
-
-	//res = GetPubKey(&loadedAIK, &hSRK, &ulPubAIKeyLength, &rgbPubAIKey);
-	//std::cout<< "Display Loaded PubAIK" << std::endl;
-	//displayKey(loadedAIK);
-	//Tspi_Context_FreeMemory(hContext, rgbPubAIKey);
 
 END:
 	Tspi_Context_FreeMemory(hContext, NULL);
